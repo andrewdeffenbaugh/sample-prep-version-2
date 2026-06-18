@@ -5,89 +5,97 @@
 
 <style>
 body {
-  font-family: Arial;
-  background: #f4f6fa;
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
   margin: 0;
 }
 
 .container {
   max-width: 900px;
-  margin: 30px auto;
+  margin: 40px auto;
 }
 
 .card {
   background: white;
-  border-radius: 15px;
-  padding: 20px;
-  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-radius: 16px;
+  padding: 25px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
-h2 {
+h1 {
   text-align: center;
+  margin-bottom: 20px;
 }
 
-/* KPI cards */
+/* KPI Cards */
 .kpis {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 15px;
-  margin: 20px 0;
 }
 
 .kpi {
   background: #f9fafc;
-  border: 1px solid #eee;
-  border-radius: 12px;
   padding: 15px;
+  border-radius: 12px;
   text-align: center;
 }
 
 .kpi-value {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: bold;
 }
 
-/* progress bar */
+/* Progress */
 .progressBar {
-  margin-top: 10px;
+  margin-top: 15px;
   background: #e5e7eb;
   height: 12px;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
-.progressFill {
+.fill {
   height: 100%;
 }
 
-/* tissues */
+/* Tissue rows */
 .tissue {
   display: grid;
-  grid-template-columns: 1fr 100px 100px;
+  grid-template-columns: 1fr 80px 80px;
   gap: 10px;
   margin-top: 8px;
 }
 
-/* status colors */
-.green { background:#22c55e; }
-.yellow { background:#facc15; }
-.red { background:#ef4444; }
+/* Colors */
+.green { background:#22c55e }
+.yellow { background:#facc15 }
+.red { background:#ef4444 }
+
+input, select {
+  padding: 5px;
+}
 
 button {
   padding: 6px 10px;
-  border: none;
-  border-radius: 6px;
   background: #2563eb;
   color: white;
+  border: none;
+  border-radius: 6px;
   cursor: pointer;
 }
 
-select, input {
-  padding: 5px;
-  margin-right: 6px;
+button:hover {
+  background:#1d4ed8;
 }
-</style>
 
+.mode {
+  text-align:center;
+  font-size:12px;
+  color:#666;
+}
+
+</style>
 </head>
 
 <body>
@@ -95,9 +103,9 @@ select, input {
 <div class="container">
 <div class="card">
 
-<h2>Sample Preparation Tracker</h2>
+<h1>Sample Preparation Tracker</h1>
 
-<div id="modeLabel"></div>
+<div id="mode"></div>
 <div id="controls"></div>
 
 <select id="planSelect"></select>
@@ -107,10 +115,12 @@ select, input {
     <div>Total Samples</div>
     <div class="kpi-value" id="total">0</div>
   </div>
+
   <div class="kpi">
     <div>Prepared</div>
     <div class="kpi-value" id="prepared">0</div>
   </div>
+
   <div class="kpi">
     <div>Completion</div>
     <div class="kpi-value" id="percent">0%</div>
@@ -118,7 +128,7 @@ select, input {
 </div>
 
 <div class="progressBar">
-  <div id="progress" class="progressFill"></div>
+  <div id="progress" class="fill"></div>
 </div>
 
 <h3>Tissue Breakdown</h3>
@@ -129,6 +139,7 @@ select, input {
 
 <script>
 
+// mode detection
 const READ_ONLY = window.location.search.includes("view=readonly");
 
 let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
@@ -138,21 +149,21 @@ function save() {
   localStorage.setItem("trackerData", JSON.stringify(plans));
 }
 
+// add plan
 function addPlan() {
-  const input = document.getElementById("newPlan");
-  const id = input.value;
-
+  let id = document.getElementById("planInput").value;
   if (!id) return;
 
   plans.push({ id, tissues: [] });
   currentIndex = plans.length - 1;
 
-  input.value = "";
+  document.getElementById("planInput").value = "";
 
   save();
   render();
 }
 
+// add tissue
 function addTissue() {
   if (!plans[currentIndex]) return;
 
@@ -166,37 +177,35 @@ function addTissue() {
   render();
 }
 
-function update(index, field, value) {
-  let t = plans[currentIndex].tissues[index];
+// update values
+function update(i, field, val) {
+  let t = plans[currentIndex].tissues[i];
 
-  if (field === "type") t.type = value;
-  else t[field] = parseInt(value) || 0;
+  if (field === "type") t.type = val;
+  else t[field] = parseInt(val) || 0;
 
   save();
 }
 
+// switch plan
 function changePlan() {
   currentIndex = parseInt(document.getElementById("planSelect").value);
   render();
 }
 
+// render UI
 function render() {
 
-  document.getElementById("modeLabel").innerText =
-    READ_ONLY ? "VIEW MODE" : "EDIT MODE";
+  document.getElementById("mode").innerHTML =
+    `<div class="mode">${READ_ONLY ? "VIEW MODE" : "EDIT MODE"}</div>`;
 
-  // Controls
-  let controls = document.getElementById("controls");
-
-  if (!READ_ONLY) {
-    controls.innerHTML = `
-      <input id="newPlan" placeholder="New Plan ID">
-      <button onclick="addPlan()">Add Plan</button>
+  // controls
+  document.getElementById("controls").innerHTML =
+    READ_ONLY ? "" : `
+      <input id="planInput" placeholder="New Plan">
+      <button onclick="addPlan()">Add</button>
       <button onclick="addTissue()">Add Tissue</button>
     `;
-  } else {
-    controls.innerHTML = "";
-  }
 
   let select = document.getElementById("planSelect");
   select.innerHTML = "";
@@ -208,10 +217,7 @@ function render() {
     select.appendChild(opt);
   });
 
-  if (!plans.length) {
-    document.getElementById("tissues").innerHTML = "No data yet";
-    return;
-  }
+  if (!plans.length) return;
 
   select.value = currentIndex;
 
@@ -228,17 +234,15 @@ function render() {
     total += t.total;
     prepared += t.prepared;
 
-    if (READ_ONLY) {
-      tissueDiv.innerHTML += `<div>${t.type}: ${t.prepared}/${t.total}</div>`;
-    } else {
-      tissueDiv.innerHTML += `
+    tissueDiv.innerHTML += READ_ONLY
+      ? `<div>${t.type}: ${t.prepared}/${t.total}</div>`
+      : `
         <div class="tissue">
           <input value="${t.type}" onchange="update(${i},'type',this.value)">
           <input type="number" value="${t.total}" onchange="update(${i},'total',this.value)">
           <input type="number" value="${t.prepared}" onchange="update(${i},'prepared',this.value)">
         </div>
       `;
-    }
   });
 
   let percent = total ? Math.round((prepared/total)*100) : 0;
@@ -251,15 +255,15 @@ function render() {
   if (percent < 50) color = "red";
   else if (percent < 80) color = "yellow";
 
-  let progress = document.getElementById("progress");
+  let bar = document.getElementById("progress");
 
-  progress.style.width = percent + "%";
-  progress.className = "progressFill " + color;
+  bar.style.width = percent + "%";
+  bar.className = "fill " + color;
 }
 
+// init
 render();
 
 </script>
-
 </body>
 </html>
