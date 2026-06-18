@@ -9,61 +9,45 @@ body {
   background: #f5f7fb;
   margin: 0;
 }
-
 .container {
   max-width: 900px;
   margin: 40px auto;
 }
-
 .card {
   background: white;
   border-radius: 15px;
   padding: 25px;
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
-
 h1 { text-align:center; }
 
-/* controls */
-.toolbar {
-  display:flex;
-  justify-content:space-between;
-  margin-bottom:10px;
-}
-
-/* kpis */
 .kpis {
   display:grid;
   grid-template-columns:repeat(3,1fr);
   gap:10px;
 }
-
 .kpi {
   background:#f9fafc;
   padding:12px;
   border-radius:10px;
   text-align:center;
 }
-
 .kpi-value {
   font-size:24px;
   font-weight:bold;
 }
 
-/* progress */
 .progress {
   margin-top:10px;
-  height:12px;
+  height:10px;
   background:#ddd;
   border-radius:10px;
   overflow:hidden;
 }
-
 .fill {
   height:100%;
 }
 
-/* rows */
 .row {
   display:grid;
   grid-template-columns:1fr 100px 160px;
@@ -71,10 +55,7 @@ h1 { text-align:center; }
   margin-top:6px;
 }
 
-button {
-  padding:6px 10px;
-  margin:2px;
-}
+button { padding:6px 10px; }
 
 .green { background:#22c55e }
 .yellow { background:#facc15 }
@@ -90,18 +71,17 @@ button {
 
 <h1>Sample Preparation Tracker</h1>
 
-<div class="toolbar">
-  <div>
-    <button onclick="prev()">Previous</button>
-    <button onclick="next()">Next</button>
-  </div>
-  <div id="planId"></div>
+<div>
+  <button onclick="prev()">Previous</button>
+  <button onclick="next()">Next</button>
 </div>
 
+<h3 id="planId"></h3>
+
 <div class="kpis">
-  <div class="kpi">Total<div id="total" class="kpi-value"></div></div>
-  <div class="kpi">Prepared<div id="prepared" class="kpi-value"></div></div>
-  <div class="kpi">%<div id="percent" class="kpi-value"></div></div>
+  <div class="kpi">Total<div id="total" class="kpi-value">0</div></div>
+  <div class="kpi">Prepared<div id="prepared" class="kpi-value">0</div></div>
+  <div class="kpi">%<div id="percent" class="kpi-value">0%</div></div>
 </div>
 
 <div class="progress">
@@ -121,9 +101,9 @@ button {
 
 <script>
 
-let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
+let plans = JSON.parse(localStorage.getItem("trackerData") || "null");
 
-if (plans.length === 0) {
+if (!plans || !Array.isArray(plans) || plans.length === 0) {
   plans = [{ id:"Plan-1", tissues:[] }];
 }
 
@@ -144,20 +124,25 @@ function prev() {
 }
 
 function addPlan() {
-  let id = document.getElementById("newPlan").value;
+  let input = document.getElementById("newPlan");
+  let id = input.value;
+
   if (!id) return;
 
   plans.push({ id, tissues:[] });
   current = plans.length - 1;
 
-  document.getElementById("newPlan").value = "";
+  input.value = "";
 
   save();
   render();
 }
 
 function addTissue() {
-  plans[current].tissues.push({
+  let plan = plans[current];
+  if (!plan) return;
+
+  plan.tissues.push({
     name:"New Tissue",
     total:10,
     prepared:0
@@ -168,12 +153,16 @@ function addTissue() {
 }
 
 function rename(i, val) {
+  if (!plans[current] || !plans[current].tissues[i]) return;
+
   plans[current].tissues[i].name = val;
   save();
 }
 
 function adjust(i, delta) {
+
   let t = plans[current].tissues[i];
+  if (!t) return;
 
   t.prepared += delta;
 
@@ -186,7 +175,9 @@ function adjust(i, delta) {
 
 function render() {
 
-  const plan = plans[current];
+  let plan = plans[current];
+  if (!plan) return;
+
   document.getElementById("planId").innerText = plan.id;
 
   let total = 0;
@@ -214,7 +205,7 @@ function render() {
 
   document.getElementById("tissues").innerHTML = html;
 
-  let percent = total ? Math.round(prepared / total * 100) : 0;
+  let percent = total ? Math.round(prepared/total*100) : 0;
 
   document.getElementById("total").innerText = total;
   document.getElementById("prepared").innerText = prepared;
@@ -232,6 +223,6 @@ function render() {
 render();
 
 </script>
+
 </body>
 </html>
-
