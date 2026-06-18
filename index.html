@@ -4,97 +4,53 @@
 <title>Sample Preparation Tracker</title>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  background: #f5f7fb;
-  margin: 0;
-}
-
-.container {
-  max-width: 900px;
-  margin: 40px auto;
-}
-
+body { font-family: Arial; background:#f5f7fb; margin:0; }
+.container { max-width:900px; margin:40px auto; }
 .card {
-  background: white;
-  border-radius: 16px;
-  padding: 25px;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  background:white;
+  border-radius:15px;
+  padding:20px;
+  box-shadow:0 10px 25px rgba(0,0,0,0.1);
 }
 
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-/* KPI Cards */
 .kpis {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 15px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:15px;
 }
 
 .kpi {
-  background: #f9fafc;
-  padding: 15px;
-  border-radius: 12px;
-  text-align: center;
+  background:#f9fafc;
+  padding:15px;
+  border-radius:10px;
+  text-align:center;
 }
 
 .kpi-value {
-  font-size: 26px;
-  font-weight: bold;
+  font-size:24px;
+  font-weight:bold;
 }
 
-/* Progress */
 .progressBar {
-  margin-top: 15px;
-  background: #e5e7eb;
-  height: 12px;
-  border-radius: 8px;
-  overflow: hidden;
+  margin-top:15px;
+  background:#ddd;
+  height:10px;
+  border-radius:10px;
 }
 
 .fill {
-  height: 100%;
+  height:100%;
+  background:#22c55e;
 }
 
-/* Tissue rows */
 .tissue {
-  display: grid;
-  grid-template-columns: 1fr 80px 80px;
-  gap: 10px;
-  margin-top: 8px;
+  display:grid;
+  grid-template-columns:1fr 80px 80px;
+  gap:10px;
+  margin-top:6px;
 }
 
-/* Colors */
-.green { background:#22c55e }
-.yellow { background:#facc15 }
-.red { background:#ef4444 }
-
-input, select {
-  padding: 5px;
-}
-
-button {
-  padding: 6px 10px;
-  background: #2563eb;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-button:hover {
-  background:#1d4ed8;
-}
-
-.mode {
-  text-align:center;
-  font-size:12px;
-  color:#666;
-}
-
+button { padding:6px 10px; margin-top:8px; }
 </style>
 </head>
 
@@ -103,27 +59,24 @@ button:hover {
 <div class="container">
 <div class="card">
 
-<h1>Sample Preparation Tracker</h1>
+<h2>Sample Preparation Tracker</h2>
 
-<div id="mode"></div>
 <div id="controls"></div>
 
-<select id="planSelect"></select>
+<select id="planSelect" onchange="changePlan()"></select>
 
 <div class="kpis">
   <div class="kpi">
-    <div>Total Samples</div>
-    <div class="kpi-value" id="total">0</div>
+    <div>Total</div>
+    <div class="kpi-value" id="total"></div>
   </div>
-
   <div class="kpi">
     <div>Prepared</div>
-    <div class="kpi-value" id="prepared">0</div>
+    <div class="kpi-value" id="prepared"></div>
   </div>
-
   <div class="kpi">
-    <div>Completion</div>
-    <div class="kpi-value" id="percent">0%</div>
+    <div>%</div>
+    <div class="kpi-value" id="percent"></div>
   </div>
 </div>
 
@@ -131,86 +84,89 @@ button:hover {
   <div id="progress" class="fill"></div>
 </div>
 
-<h3>Tissue Breakdown</h3>
+<h3>Tissues</h3>
 <div id="tissues"></div>
+
+<button onclick="saveToGitHub()">Save (Update Shared Data)</button>
 
 </div>
 </div>
 
 <script>
 
-// mode detection
-const READ_ONLY = window.location.search.includes("view=readonly");
+const DATA_URL = "data.json"; // GitHub file
 
-let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
+let plans = [];
 let currentIndex = 0;
 
-function save() {
-  localStorage.setItem("trackerData", JSON.stringify(plans));
-}
+// ✅ load shared data
+async function loadData() {
+  const res = await fetch(DATA_URL);
+  const data = await res.json();
 
-// add plan
-function addPlan() {
-  let id = document.getElementById("planInput").value;
-  if (!id) return;
+  const grouped = {};
 
-  plans.push({ id, tissues: [] });
-  currentIndex = plans.length - 1;
+  data.forEach(r => {
+    if (!grouped[r.plan]) grouped[r.plan] = [];
+    grouped[r.plan].push({
+      type:r.tissue,
+      total:r.total,
+      prepared:r.prepared
+    });
+  });
 
-  document.getElementById("planInput").value = "";
+  plans = Object.keys(grouped).map(p => ({
+    id:p,
+    tissues:grouped[p]
+  }));
 
-  save();
   render();
 }
 
-// add tissue
-function addTissue() {
-  if (!plans[currentIndex]) return;
+// ✅ add plan
+function addPlan() {
+  const id = document.getElementById("planInput").value;
+  if (!id) return;
 
+  plans.push({ id, tissues:[] });
+  render();
+}
+
+// ✅ add tissue
+function addTissue() {
   plans[currentIndex].tissues.push({
     type:"",
     total:0,
     prepared:0
   });
-
-  save();
   render();
 }
 
-// update values
+// ✅ update values
 function update(i, field, val) {
   let t = plans[currentIndex].tissues[i];
-
-  if (field === "type") t.type = val;
-  else t[field] = parseInt(val) || 0;
-
-  save();
+  t[field] = field==="type" ? val : parseInt(val)||0;
 }
 
-// switch plan
+// ✅ change plan
 function changePlan() {
-  currentIndex = parseInt(document.getElementById("planSelect").value);
+  currentIndex = document.getElementById("planSelect").value;
   render();
 }
 
-// render UI
+// ✅ render UI
 function render() {
 
-  document.getElementById("mode").innerHTML =
-    `<div class="mode">${READ_ONLY ? "VIEW MODE" : "EDIT MODE"}</div>`;
-
-  // controls
-  document.getElementById("controls").innerHTML =
-    READ_ONLY ? "" : `
-      <input id="planInput" placeholder="New Plan">
-      <button onclick="addPlan()">Add</button>
-      <button onclick="addTissue()">Add Tissue</button>
-    `;
+  document.getElementById("controls").innerHTML = `
+    <input id="planInput" placeholder="New Plan">
+    <button onclick="addPlan()">Add Plan</button>
+    <button onclick="addTissue()">Add Tissue</button>
+  `;
 
   let select = document.getElementById("planSelect");
   select.innerHTML = "";
 
-  plans.forEach((p,i) => {
+  plans.forEach((p,i)=>{
     let opt = document.createElement("option");
     opt.value = i;
     opt.textContent = p.id;
@@ -226,43 +182,57 @@ function render() {
   let total = 0;
   let prepared = 0;
 
-  let tissueDiv = document.getElementById("tissues");
-  tissueDiv.innerHTML = "";
+  let tDiv = document.getElementById("tissues");
+  tDiv.innerHTML = "";
 
-  plan.tissues.forEach((t,i) => {
-
+  plan.tissues.forEach((t,i)=>{
     total += t.total;
     prepared += t.prepared;
 
-    tissueDiv.innerHTML += READ_ONLY
-      ? `<div>${t.type}: ${t.prepared}/${t.total}</div>`
-      : `
-        <div class="tissue">
-          <input value="${t.type}" onchange="update(${i},'type',this.value)">
-          <input type="number" value="${t.total}" onchange="update(${i},'total',this.value)">
-          <input type="number" value="${t.prepared}" onchange="update(${i},'prepared',this.value)">
-        </div>
-      `;
+    tDiv.innerHTML += `
+      <div class="tissue">
+        <input value="${t.type}" onchange="update(${i},'type',this.value)">
+        <input type="number" value="${t.total}" onchange="update(${i},'total',this.value)">
+        <input type="number" value="${t.prepared}" onchange="update(${i},'prepared',this.value)">
+      </div>
+    `;
   });
 
-  let percent = total ? Math.round((prepared/total)*100) : 0;
+  let percent = total ? Math.round(prepared/total*100) : 0;
 
   document.getElementById("total").innerText = total;
   document.getElementById("prepared").innerText = prepared;
   document.getElementById("percent").innerText = percent + "%";
 
-  let color = "green";
-  if (percent < 50) color = "red";
-  else if (percent < 80) color = "yellow";
-
-  let bar = document.getElementById("progress");
-
-  bar.style.width = percent + "%";
-  bar.className = "fill " + color;
+  document.getElementById("progress").style.width = percent + "%";
 }
 
-// init
-render();
+// ✅ convert app data → flat JSON
+function toFlatJSON() {
+  let rows = [];
+
+  plans.forEach(p=>{
+    p.tissues.forEach(t=>{
+      rows.push({
+        plan:p.id,
+        tissue:t.type,
+        total:t.total,
+        prepared:t.prepared
+      });
+    });
+  });
+
+  return rows;
+}
+
+// ✅ save (manual for now)
+function saveToGitHub() {
+  alert("Copy JSON from console and paste into data.json in GitHub");
+
+  console.log(JSON.stringify(toFlatJSON(), null, 2));
+}
+
+loadData();
 
 </script>
 </body>
