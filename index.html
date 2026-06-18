@@ -6,7 +6,7 @@
 <style>
 body {
   font-family: Arial;
-  background: #f4f6fa;
+  background: #f5f7fb;
   margin: 0;
 }
 
@@ -22,21 +22,216 @@ body {
   box-shadow: 0 10px 25px rgba(0,0,0,0.1);
 }
 
-h1 {
-  text-align: center;
-}
+h1 { text-align:center; }
 
-/* toolbar */
+/* controls */
 .toolbar {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 15px;
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:10px;
 }
 
 /* kpis */
 .kpis {
-  display: grid;
-  grid-template-columns: repeat(3,1fr);
-  gap: 10px;
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:10px;
 }
+
+.kpi {
+  background:#f9fafc;
+  padding:12px;
+  border-radius:10px;
+  text-align:center;
+}
+
+.kpi-value {
+  font-size:24px;
+  font-weight:bold;
+}
+
+/* progress */
+.progress {
+  margin-top:10px;
+  height:12px;
+  background:#ddd;
+  border-radius:10px;
+  overflow:hidden;
+}
+
+.fill {
+  height:100%;
+}
+
+/* rows */
+.row {
+  display:grid;
+  grid-template-columns:1fr 100px 160px;
+  gap:10px;
+  margin-top:6px;
+}
+
+button {
+  padding:6px 10px;
+  margin:2px;
+}
+
+.green { background:#22c55e }
+.yellow { background:#facc15 }
+.red { background:#ef4444 }
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+
+<h1>Sample Preparation Tracker</h1>
+
+<div class="toolbar">
+  <div>
+    <button onclick="prev()">Previous</button>
+    <button onclick="next()">Next</button>
+  </div>
+  <div id="planId"></div>
+</div>
+
+<div class="kpis">
+  <div class="kpi">Total<div id="total" class="kpi-value"></div></div>
+  <div class="kpi">Prepared<div id="prepared" class="kpi-value"></div></div>
+  <div class="kpi">%<div id="percent" class="kpi-value"></div></div>
+</div>
+
+<div class="progress">
+  <div id="bar" class="fill"></div>
+</div>
+
+<h3>Tissues</h3>
+<div id="tissues"></div>
+
+<input id="newPlan" placeholder="New Plan ID">
+<button onclick="addPlan()">Add Plan</button>
+
+<button onclick="addTissue()">Add Tissue</button>
+
+</div>
+</div>
+
+<script>
+
+let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
+
+if (plans.length === 0) {
+  plans = [{ id:"Plan-1", tissues:[] }];
+}
+
+let current = 0;
+
+function save() {
+  localStorage.setItem("trackerData", JSON.stringify(plans));
+}
+
+function next() {
+  current = (current + 1) % plans.length;
+  render();
+}
+
+function prev() {
+  current = (current - 1 + plans.length) % plans.length;
+  render();
+}
+
+function addPlan() {
+  let id = document.getElementById("newPlan").value;
+  if (!id) return;
+
+  plans.push({ id, tissues:[] });
+  current = plans.length - 1;
+
+  document.getElementById("newPlan").value = "";
+
+  save();
+  render();
+}
+
+function addTissue() {
+  plans[current].tissues.push({
+    name:"New Tissue",
+    total:10,
+    prepared:0
+  });
+
+  save();
+  render();
+}
+
+function rename(i, val) {
+  plans[current].tissues[i].name = val;
+  save();
+}
+
+function adjust(i, delta) {
+  let t = plans[current].tissues[i];
+
+  t.prepared += delta;
+
+  if (t.prepared < 0) t.prepared = 0;
+  if (t.prepared > t.total) t.prepared = t.total;
+
+  save();
+  render();
+}
+
+function render() {
+
+  const plan = plans[current];
+  document.getElementById("planId").innerText = plan.id;
+
+  let total = 0;
+  let prepared = 0;
+
+  let html = "";
+
+  plan.tissues.forEach((t,i) => {
+
+    total += t.total;
+    prepared += t.prepared;
+
+    html += `
+      <div class="row">
+        <input value="${t.name}" onchange="rename(${i},this.value)">
+        <div>${t.total}</div>
+        <div>
+          <button onclick="adjust(${i},-1)">-1</button>
+          <button onclick="adjust(${i},1)">+1</button>
+          ${t.prepared}/${t.total}
+        </div>
+      </div>
+    `;
+  });
+
+  document.getElementById("tissues").innerHTML = html;
+
+  let percent = total ? Math.round(prepared / total * 100) : 0;
+
+  document.getElementById("total").innerText = total;
+  document.getElementById("prepared").innerText = prepared;
+  document.getElementById("percent").innerText = percent + "%";
+
+  let color = "green";
+  if (percent < 50) color = "red";
+  else if (percent < 80) color = "yellow";
+
+  let bar = document.getElementById("bar");
+  bar.style.width = percent + "%";
+  bar.className = "fill " + color;
+}
+
+render();
+
+</script>
+</body>
+</html>
 
