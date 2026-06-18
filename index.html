@@ -27,3 +27,239 @@ h2 {
 }
 
 /* KPI cards */
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin: 20px 0;
+}
+
+.kpi {
+  background: #f9fafc;
+  border: 1px solid #eee;
+  border-radius: 12px;
+  padding: 15px;
+  text-align: center;
+}
+
+.kpi-value {
+  font-size: 28px;
+  font-weight: bold;
+}
+
+/* progress bar */
+.progressBar {
+  margin-top: 10px;
+  background: #e5e7eb;
+  height: 12px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+}
+
+/* tissues */
+.tissue {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* status colors */
+.green { background:#22c55e; }
+.yellow { background:#facc15; }
+.red { background:#ef4444; }
+
+button {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+}
+
+select, input {
+  padding: 5px;
+  margin-right: 6px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="container">
+<div class="card">
+
+<h2>Sample Preparation Tracker</h2>
+
+<div id="modeLabel"></div>
+<div id="controls"></div>
+
+<select id="planSelect"></select>
+
+<div class="kpis">
+  <div class="kpi">
+    <div>Total Samples</div>
+    <div class="kpi-value" id="total">0</div>
+  </div>
+  <div class="kpi">
+    <div>Prepared</div>
+    <div class="kpi-value" id="prepared">0</div>
+  </div>
+  <div class="kpi">
+    <div>Completion</div>
+    <div class="kpi-value" id="percent">0%</div>
+  </div>
+</div>
+
+<div class="progressBar">
+  <div id="progress" class="progressFill"></div>
+</div>
+
+<h3>Tissue Breakdown</h3>
+<div id="tissues"></div>
+
+</div>
+</div>
+
+<script>
+
+const READ_ONLY = window.location.search.includes("view=readonly");
+
+let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
+let currentIndex = 0;
+
+function save() {
+  localStorage.setItem("trackerData", JSON.stringify(plans));
+}
+
+function addPlan() {
+  const input = document.getElementById("newPlan");
+  const id = input.value;
+
+  if (!id) return;
+
+  plans.push({ id, tissues: [] });
+  currentIndex = plans.length - 1;
+
+  input.value = "";
+
+  save();
+  render();
+}
+
+function addTissue() {
+  if (!plans[currentIndex]) return;
+
+  plans[currentIndex].tissues.push({
+    type:"",
+    total:0,
+    prepared:0
+  });
+
+  save();
+  render();
+}
+
+function update(index, field, value) {
+  let t = plans[currentIndex].tissues[index];
+
+  if (field === "type") t.type = value;
+  else t[field] = parseInt(value) || 0;
+
+  save();
+}
+
+function changePlan() {
+  currentIndex = parseInt(document.getElementById("planSelect").value);
+  render();
+}
+
+function render() {
+
+  document.getElementById("modeLabel").innerText =
+    READ_ONLY ? "VIEW MODE" : "EDIT MODE";
+
+  // Controls
+  let controls = document.getElementById("controls");
+
+  if (!READ_ONLY) {
+    controls.innerHTML = `
+      <input id="newPlan" placeholder="New Plan ID">
+      <button onclick="addPlan()">Add Plan</button>
+      <button onclick="addTissue()">Add Tissue</button>
+    `;
+  } else {
+    controls.innerHTML = "";
+  }
+
+  let select = document.getElementById("planSelect");
+  select.innerHTML = "";
+
+  plans.forEach((p,i) => {
+    let opt = document.createElement("option");
+    opt.value = i;
+    opt.textContent = p.id;
+    select.appendChild(opt);
+  });
+
+  if (!plans.length) {
+    document.getElementById("tissues").innerHTML = "No data yet";
+    return;
+  }
+
+  select.value = currentIndex;
+
+  let plan = plans[currentIndex];
+
+  let total = 0;
+  let prepared = 0;
+
+  let tissueDiv = document.getElementById("tissues");
+  tissueDiv.innerHTML = "";
+
+  plan.tissues.forEach((t,i) => {
+
+    total += t.total;
+    prepared += t.prepared;
+
+    if (READ_ONLY) {
+      tissueDiv.innerHTML += `<div>${t.type}: ${t.prepared}/${t.total}</div>`;
+    } else {
+      tissueDiv.innerHTML += `
+        <div class="tissue">
+          <input value="${t.type}" onchange="update(${i},'type',this.value)">
+          <input type="number" value="${t.total}" onchange="update(${i},'total',this.value)">
+          <input type="number" value="${t.prepared}" onchange="update(${i},'prepared',this.value)">
+        </div>
+      `;
+    }
+  });
+
+  let percent = total ? Math.round((prepared/total)*100) : 0;
+
+  document.getElementById("total").innerText = total;
+  document.getElementById("prepared").innerText = prepared;
+  document.getElementById("percent").innerText = percent + "%";
+
+  let color = "green";
+  if (percent < 50) color = "red";
+  else if (percent < 80) color = "yellow";
+
+  let progress = document.getElementById("progress");
+
+  progress.style.width = percent + "%";
+  progress.className = "progressFill " + color;
+}
+
+render();
+
+</script>
+
+</body>
+</html>
