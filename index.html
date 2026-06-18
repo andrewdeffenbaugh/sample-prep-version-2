@@ -1,120 +1,57 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-  <title>Sample Tracker</title>
-</head>
+<title>Sample Preparation Tracker</title>
 
-<body>
-
-<h2>Sample Preparation Tracker</h2>
-
-<div id="main"></div>
-
-<script>
-
-const READ_ONLY = window.location.search.includes("view=readonly");
-
-let plans = JSON.parse(localStorage.getItem("trackerData") || "[]");
-
-// ---------- SAVE ----------
-function save() {
-  localStorage.setItem("trackerData", JSON.stringify(plans));
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f6fa;
+  margin: 0;
 }
 
-// ---------- ADD PLAN ----------
-function addPlan() {
-  const id = document.getElementById("newPlan").value;
-  if (!id) return;
-
-  plans.push({ id, tissues: [] });
-  save();
-  render();
+.container {
+  max-width: 1000px;
+  margin: 30px auto;
 }
 
-// ---------- ADD TISSUE ----------
-function addTissue(planIndex) {
-  plans[planIndex].tissues.push({
-    type: "",
-    total: 0,
-    prepared: 0
-  });
-
-  save();
-  render();
+.card {
+  background: white;
+  border-radius: 15px;
+  padding: 20px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
 }
 
-// ---------- UPDATE ----------
-function update(planIndex, tissueIndex, field, value) {
-  plans[planIndex].tissues[tissueIndex][field] =
-    field === "type" ? value : parseInt(value) || 0;
-
-  save();
+h2 {
+  text-align: center;
 }
 
-// ---------- RENDER ----------
-function render() {
-  const div = document.getElementById("main");
-  div.innerHTML = "";
-
-  if (!READ_ONLY) {
-    div.innerHTML += `
-      <input id="newPlan" placeholder="New Plan ID">
-      <button onclick="addPlan()">Add Plan</button>
-      <hr>
-    `;
-  }
-
-  plans.forEach((plan, i) => {
-
-    let total = 0;
-    let prepared = 0;
-
-    let html = `<h3>${plan.id}</h3>`;
-
-    plan.tissues.forEach((t, j) => {
-      total += t.total;
-      prepared += t.prepared;
-
-      if (READ_ONLY) {
-        html += `
-          <div>${t.type}: ${t.prepared}/${t.total}</div>
-        `;
-      } else {
-        html += `
-          <div>
-            <input value="${t.type}" onchange="update(${i},${j},'type',this.value)">
-            <input type="number" value="${t.total}" onchange="update(${i},${j},'total',this.value)">
-            <input type="number" value="${t.prepared}" onchange="update(${i},${j},'prepared',this.value)">
-          </div>
-        `;
-      }
-    });
-
-    let percent = total ? Math.round(prepared / total * 100) : 0;
-
-    html += `
-      <div><strong>Total:</strong> ${total}</div>
-      <div><strong>Prepared:</strong> ${prepared}</div>
-
-      <div style="height:10px;background:#ddd;">
-        <div style="height:100%;background:green;width:${percent}%;"></div>
-      </div>
-    `;
-
-    if (!READ_ONLY) {
-      html += `<button onclick="addTissue(${i})">Add Tissue</button>`;
-    }
-
-    html += `<hr>`;
-
-    div.innerHTML += html;
-  });
+.plan {
+  margin-top: 20px;
+  padding: 15px;
+  border-radius: 12px;
+  background: #f9fafc;
+  border: 1px solid #eee;
 }
 
-render();
+.tissue {
+  display: grid;
+  grid-template-columns: 1fr 100px 100px;
+  gap: 10px;
+  margin-top: 8px;
+}
 
-</script>
+input {
+  padding: 6px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
 
-</body>
-</html>
+button {
+  margin-top: 10px;
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
